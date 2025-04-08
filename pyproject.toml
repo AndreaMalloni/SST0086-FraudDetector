@@ -50,9 +50,9 @@ default-groups = "all"
 packages = ["src/fraud_detector"]
 
 [project.urls]
-Homepage = "https://github.com/AndreaMalloni/SST0086-FraudDetector"
-Documentation = "https://github.com/AndreaMalloni/SST0086-FraudDetector"
-Repository = "https://github.com/AndreaMalloni/SST0086-FraudDetector"
+Homepage = "https://github.com/AndreaMalloni/SST0086-FraudDetector/"
+Documentation = "https://AndreaMalloni.github.io/SST0086-FraudDetector/"
+Repository = "https://github.com/AndreaMalloni/SST0086-FraudDetector/"
 
 [tool.mypy]
 ignore_missing_imports = true
