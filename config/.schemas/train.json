@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+      "dataset_path": { "type": "string" },
+      "output_dir": { "type": "string" },
+      "model_name": { "type": "string" },
+      "epochs": { "type": "integer", "minimum": 1 },
+      "batch_size": { "type": "integer", "minimum": 1 },
+      "learning_rate": { "type": "number", "minimum": 0 },
+      "optimizer": {
+        "type": "string",
+        "enum": ["adam", "sgd", "rmsprop"]
+      },
+      "shuffle": { "type": "boolean" },
+      "validation_split": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0
+      },
+      "early_stopping": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "patience": { "type": "integer", "minimum": 1 }
+        },
+        "required": ["enabled", "patience"]
+      }
+    },
+    "required": [
+      "dataset_path",
+      "output_dir",
+      "model_name",
+      "epochs",
+      "batch_size",
+      "learning_rate",
+      "optimizer",
+      "shuffle",
+      "validation_split",
+      "early_stopping"
+    ]
+  }
+  

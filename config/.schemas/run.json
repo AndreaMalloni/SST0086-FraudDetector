@@ -1,0 +1,22 @@
+{
+    "type": "object",
+    "properties": {
+      "input_data": { "type": "string" },
+      "model_path": { "type": "string" },
+      "threshold": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0
+      },
+      "output_predictions": { "type": "string" },
+      "log_results": { "type": "boolean" }
+    },
+    "required": [
+      "input_data",
+      "model_path",
+      "threshold",
+      "output_predictions",
+      "log_results"
+    ]
+  }
+  

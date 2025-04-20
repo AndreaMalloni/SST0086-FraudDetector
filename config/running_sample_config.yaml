@@ -1,0 +1,6 @@
+logging: True
+input_data: data/test_set.csv
+model_path: models/fraud_detector_v1.pkl
+threshold: 0.8
+output_predictions: results/predictions.csv
+log_results: true
