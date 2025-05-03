@@ -1,4 +1,4 @@
-logging: True
+logging: False
 dataset_path: data/training.csv
 output_dir: models/
 model_name: fraud_detector_v1

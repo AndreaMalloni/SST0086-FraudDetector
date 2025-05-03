@@ -13,11 +13,17 @@ requires-python = ">=3.9"
 dependencies = [
     "jsonschema>=4.23.0",
     "kagglehub>=0.3.11",
+    "numpy>=2.0.2",
+    "pandas>=2.2.3",
+    "pyarrow>=20.0.0",
     "pyspark>=3.5.5",
     "pyyaml>=6.0.2",
     "rich>=14.0.0",
+    "scikit-learn>=1.6.1",
+    "setuptools>=80.1.0",
     "typer-slim>=0.15.2",
     "types-pyyaml>=6.0.12.20250402",
+    "xgboost[spark]>=2.1.4",
 ]
 
 [dependency-groups]

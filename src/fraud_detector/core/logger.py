@@ -11,7 +11,7 @@ from rich.logging import RichHandler
 class LoggingManager:
     _instance = None
     _loggers: dict[str, Logger] = {}
-    _supported: list[str] = ["Training", "Running", "Processing"]
+    _supported: list[str] = ["Training", "Running", "Processing", "Analysis"]
 
     def __new__(cls) -> "LoggingManager":
         if cls._instance is None:
