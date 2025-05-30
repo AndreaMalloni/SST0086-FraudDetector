@@ -11,7 +11,7 @@ from rich.logging import RichHandler
 class LoggingManager:
     _instance = None
     _loggers: dict[str, Logger] = {}
-    _supported: list[str] = ["Training", "Running", "Processing", "Analysis"]
+    _supported: list[str] = ["Training", "Explanation", "Processing", "Analysis"]
 
     def __new__(cls) -> "LoggingManager":
         if cls._instance is None:
@@ -43,25 +43,30 @@ class LoggingManager:
         if name in LoggingManager._loggers:
             return LoggingManager._loggers[name]
 
-        log_filename = f"[{name}] {datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
-        log_path = Path(log_dir)
-        log_path.mkdir(parents=True, exist_ok=True)
-        file_path = log_path / log_filename
-
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         logger.propagate = False
+
+        if not enabled:
+            LoggingManager._loggers[name] = logger
+            return logger
 
         formatter = logging.Formatter(
             fmt="%(asctime)s | %(levelname)-8s | [%(module)s.%(funcName)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-        if enabled:
-            console_handler = RichHandler(rich_tracebacks=True, show_path=False)
-            console_handler.setLevel(logging.INFO)
-            console_handler.setFormatter(formatter)
-            logger.addHandler(console_handler)
+        # Console handler (Rich)
+        console_handler = RichHandler(rich_tracebacks=True, show_path=False)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        # File logging
+        log_filename = f"[{name}] {datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+        log_path = Path(log_dir)
+        log_path.mkdir(parents=True, exist_ok=True)
+        file_path = log_path / log_filename
 
         if rotation == "size":
             file_handler: Handler = RotatingFileHandler(

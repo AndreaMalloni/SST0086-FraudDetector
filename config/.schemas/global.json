@@ -1,0 +1,178 @@
+{
+  "type": "object",
+  "properties": {
+    "logging": { "type": "boolean" },
+    "kagglehub_dataset": { "type": "string" },
+    "spark": {
+      "type": "object",
+      "properties": {
+        "app_name": { "type": "string" },
+        "master": { "type": "string" },
+        "executor_memory": { "type": "string" },
+        "driver_memory": { "type": "string" },
+        "offheap_enabled": { "type": "boolean" },
+        "offheap_size": { "type": "string" },
+        "shuffle_partitions": { "type": "integer" },
+        "auto_broadcast_threshold": { "type": "string" }
+      }
+    },
+    "train": {
+      "type": "object",
+      "properties": {
+        "dataset_path": { "type": "string" },
+        "output_dir": { "type": "string" },
+        "model_name": { "type": "string" },
+        "epochs": { "type": "integer", "minimum": 1 },
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "learning_rate": { "type": "number", "minimum": 0 },
+        "optimizer": {
+          "type": "string",
+          "enum": ["adam", "sgd", "rmsprop"]
+        },
+        "shuffle": { "type": "boolean" },
+        "validation_split": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "early_stopping": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "patience": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "tuning": {
+          "type": "object",
+          "properties": {
+            "max_depth": { 
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 }
+            },
+            "learning_rate": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0 }
+            },
+            "n_estimators": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 }
+            },
+            "subsample": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "colsample_bytree": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "min_child_weight": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 }
+            },
+            "gamma": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0 }
+            },
+            "reg_alpha": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0 }
+            },
+            "reg_lambda": {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "data_processing": {
+          "type": "object",
+          "properties": {
+            "clean_data": { "type": "boolean" },
+            "repartition": { "type": "integer", "minimum": 1 },
+            "cache_data": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "explain": {
+      "type": "object",
+      "properties": {
+        "input_data": { "type": "string" },
+        "model_path": { "type": "string" },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "output_predictions": { "type": "string" },
+        "log_results": { "type": "boolean" },
+        "method": {
+          "type": "string",
+          "enum": ["shap", "lime"]
+        },
+        "num_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "explanation_params": {
+          "type": "object",
+          "properties": {
+            "shap": {
+              "type": "object",
+              "properties": {
+                "max_display": { "type": "integer", "minimum": 1 },
+                "plot_type": { 
+                  "type": "string",
+                  "enum": ["bar", "violin", "scatter"]
+                }
+              }
+            },
+            "lime": {
+              "type": "object",
+              "properties": {
+                "num_features": { "type": "integer", "minimum": 1 },
+                "class_names": { 
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "analyze": {
+      "type": "object",
+      "properties": {
+        "dataset_path": { "type": "string" },
+        "output_dir": { "type": "string" },
+        "generate_plots": { "type": "boolean" },
+        "save_statistics": { "type": "boolean" },
+        "analysis_params": {
+          "type": "object",
+          "properties": {
+            "correlation_threshold": { 
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "plot_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["correlation", "distribution", "box", "scatter"]
+              }
+            },
+            "statistics": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["basic", "correlation", "missing", "outliers"]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["logging", "kagglehub_dataset"]
+} 

@@ -6,7 +6,7 @@ import pytest
 from fraud_detector.core.logger import LoggingManager
 
 
-@pytest.mark.parametrize("name", ["Training", "Running", "Processing"])
+@pytest.mark.parametrize("name", ["Training", "Analysis", "Processing"])
 def test_logger_init_and_get(name: str, tmp_path: Path) -> None:
     log_dir = tmp_path / "logs"
     logger = LoggingManager.init_logger(name, log_dir=log_dir, rotation="size")

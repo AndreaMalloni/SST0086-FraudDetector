@@ -1,78 +1,63 @@
-import os
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from kagglehub import dataset_download
-from pyspark.ml import Pipeline
-from pyspark.ml.evaluation import BinaryClassificationEvaluator
-from pyspark.ml.feature import VectorAssembler
+import matplotlib
 from pyspark.sql import SparkSession
 from rich.console import Console
-from typer import Argument, BadParameter, Option, Typer
-from xgboost.spark import SparkXGBClassifier
+from typer import BadParameter, Option, Typer
+
+matplotlib.use("Agg")  # Set the backend to non-interactive
+
+import pandas as pd
 
 from fraud_detector.core.config import ConfigManager
 from fraud_detector.core.logger import LoggingManager
 import fraud_detector.data.analysis as analysis
 from fraud_detector.data.processing import clean
+from fraud_detector.explain_methods import get_explanation_method
+from fraud_detector.training import xgboost_spark
 
 app = Typer()
 console = Console()
 
-def train_xgboost_spark(df, output_name: str | None = None):
-    console.rule("[bold blue]Training con SparkXGBClassifier")
-    
-    # Separazione target e feature
-    target_col = "Class"
-    features_col = [c for c in df.columns if c != target_col]
 
-    # Assembla le feature in un unico vettore
-    assembler = VectorAssembler(inputCols=features_col, outputCol="features")
+def initialize(config_path: Optional[Path] = None, command: Optional[str] = None) -> None:
+    config = ConfigManager().load(config_path) if config_path else {"logging": True}
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_dir = Path(f"logs/[{timestamp}]")
 
-    # Inizializza il classificatore XGBoost
-    xgb = SparkXGBClassifier(
-        features_col="features",
-        label_col=target_col,
-        prediction_col="prediction",
-        numRound=100,
-        maxDepth=6,
-        eta=0.1,
-        num_workers=1,
-        missing=0
-    )
+    # Create necessary directories
+    for folder in ["models", log_dir]:
+        if not Path(folder).exists():
+            folder.mkdir(parents=True)
 
-    # Costruisce il pipeline Spark
-    pipeline = Pipeline(stages=[assembler, xgb])
-
-    # Split train/test
-    train_df, test_df = df.randomSplit([0.8, 0.2], seed=42)
-
-    # Fit del modello
-    model = pipeline.fit(train_df)
-
-    # Valutazione
-    predictions = model.transform(test_df)
-    evaluator = BinaryClassificationEvaluator(labelCol=target_col)
-    auc = evaluator.evaluate(predictions)
-    console.print(f"[green]AUC ROC sul test set: {auc:.4f}[/green]")
-
-    # Salvataggio del modello
-    model_name = output_name or "spark_xgb_model"
-    model_path = f"models/{model_name}"
-    
-    model.write().overwrite().save(model_path)
-    console.print(f"[green]Modello salvato in:[/green] {model_path}")
-
-def initialize(config_path: Path) -> None:
-    config = ConfigManager().load(config_path)
-    for folder in ["models", "logs"]:
-        path = Path(folder)
-        if not path.exists():
-            path.mkdir(parents=True)
+    # Create plots directory inside log directory
+    plots_dir = log_dir / "plots"
+    if command == "explain" and not plots_dir.exists():
+        plots_dir.mkdir(parents=True)
 
     manager = LoggingManager()
-    for name in manager.supported_loggers:
+
+    # Define which loggers to initialize based on the command
+    loggers_to_init = {
+        "train": ["Training", "Processing"],
+        "explain": ["Explanation"],
+        "analyze": ["Analysis"],
+    }
+
+    # If no command specified, initialize all loggers
+    loggers = (
+        loggers_to_init.get(command, manager.supported_loggers)
+        if command
+        else manager.supported_loggers
+    )
+
+    for name in loggers:
         manager.init_logger(
             name=name,
+            log_dir=str(log_dir),
             enabled=config.get("logging", True),
             rotation="time",
             when="midnight",
@@ -80,97 +65,238 @@ def initialize(config_path: Path) -> None:
         )
 
 
-def validate_config_name(value: str, command: str) -> str:
-    available = ConfigManager.available_configs().get(command, [])
+def validate_config_name(value: str) -> str:
+    available = ConfigManager.available_configs()
     if value not in available:
         raise BadParameter(
-            f"Configurazione '{value}' non valida per il comando '{command}'.\n"
-            f"Disponibili: {', '.join(sorted(available))}"
+            f"Configurazione '{value}' non valida'.\nDisponibili: {', '.join(sorted(available))}"
         )
     return value
 
 
+def create_spark_session(config: dict) -> SparkSession:
+    """Create a Spark session with the given configuration."""
+    spark_config = config.get("spark", {})
+    builder = SparkSession.builder.appName(spark_config.get("app_name", "CreditCardFraudDetector"))
+
+    if "master" in spark_config:
+        builder = builder.master(spark_config["master"])
+    if "executor_memory" in spark_config:
+        builder = builder.config("spark.executor.memory", spark_config["executor_memory"])
+    if "driver_memory" in spark_config:
+        builder = builder.config("spark.driver.memory", spark_config["driver_memory"])
+    if spark_config.get("offheap_enabled", False):
+        builder = builder.config("spark.memory.offHeap.enabled", "true")
+        if "offheap_size" in spark_config:
+            builder = builder.config("spark.memory.offHeap.size", spark_config["offheap_size"])
+    if "shuffle_partitions" in spark_config:
+        builder = builder.config(
+            "spark.sql.shuffle.partitions", str(spark_config["shuffle_partitions"])
+        )
+    if "auto_broadcast_threshold" in spark_config:
+        builder = builder.config(
+            "spark.sql.autoBroadcastJoinThreshold", spark_config["auto_broadcast_threshold"]
+        )
+
+    return builder.getOrCreate()
+
+
 @app.command()
 def train(
-    config_name: str = Argument(
-        ...,
-        callback=lambda val: validate_config_name(val, "train"),
-        help="Name of the configuration to use for training",
+    config_name: Optional[str] = Option(
+        None, "--config", "-c", help="Name of the configuration file to use"
     ),
-    output_name: str = Option(None, "--output", "-o", help="Optional name for the model output"),
+    model_name: Optional[str] = Option(None, "--model-name", "-m", help="Name of the model"),
+    shuffle: Optional[bool] = Option(None, "--shuffle", help="Whether to shuffle the data"),
+    validation_split: Optional[float] = Option(
+        None, "--validation-split", "-v", help="Validation split ratio"
+    ),
 ) -> None:
-    initialize(Path(f"config/{config_name}.yaml"))
+    # Initialize with config file if provided
+    config_path = Path(f"config/{config_name}.yaml") if config_name else None
+    initialize(config_path, "train")
+
+    # Get base configuration
+    config = ConfigManager().get_command_config("train") if config_name else {}
+
+    # Override with command line arguments
+    if model_name:
+        config["model_name"] = model_name
+    if shuffle is not None:
+        config["shuffle"] = shuffle
+    if validation_split:
+        config["validation_split"] = validation_split
 
     logger = LoggingManager().get_logger("Training")
     console.rule("[bold green]Train Command")
-    logger.info(f"Training started with configuration: {config_name}")
+    logger.info(
+        f"Training started with config: {config_name if config_name else 'inline parameters'}"
+    )
 
-    spark = SparkSession.builder.appName("CreditCardFraudDetector") \
-        .master("local[1]") \
-        .config("spark.executor.memory", "8g") \
-        .config("spark.driver.memory", "8g") \
-        .config("spark.memory.offHeap.enabled", "true") \
-        .config("spark.memory.offHeap.size", "4g") \
-        .config("spark.sql.shuffle.partitions", "100") \
-        .config("spark.sql.autoBroadcastJoinThreshold", "-1") \
-        .getOrCreate()
-
+    # Create Spark session
+    spark = create_spark_session(ConfigManager().config)
     spark.sparkContext.setLogLevel("ERROR")
 
-    download_path = dataset_download("nelgiriyewithana/credit-card-fraud-detection-dataset-2023")
-    csv_path = Path(download_path) / "creditcard_2023.csv"
+    # Load dataset
+    download_path = dataset_download(ConfigManager().config["kagglehub_dataset"])
+    csv_path = Path(download_path) / ConfigManager().config["dataset_filename"]
 
     df = spark.read.csv(str(csv_path), header=True, inferSchema=True)
-    #clean(df)
-    df = df.repartition(1)
-    train_xgboost_spark(df, "test")
 
-    # Add your training logic here
+    # Apply data processing if configured
+    if config.get("data_processing", {}).get("clean_data", False):
+        clean(df)
+    if "repartition" in config.get("data_processing", {}):
+        df = df.repartition(config["data_processing"]["repartition"])
+    if config.get("data_processing", {}).get("cache_data", False):
+        df.cache()
+
+    console.rule("[bold blue]Training con SparkXGBClassifier")
+    model = xgboost_spark(df, config["model_name"])
+
+    # Save model in both formats
+    spark_model_path = Path("models") / config["model_name"]
+    model.write().overwrite().save(str(spark_model_path))
+    logger.info(f"Modello salvato in formato Spark in: {spark_model_path}")
+
+    # Save in XGBoost format for SHAP
+    xgb_model = model.stages[-1].get_booster()
+    xgb_model_path = spark_model_path / f"{config['model_name']}.json"
+    xgb_model.save_model(str(xgb_model_path))
+    logger.info(f"Modello salvato in formato XGBoost per SHAP in: {xgb_model_path}")
+
     logger.info("Training completed successfully.")
 
 
 @app.command()
-def run(
-    model_name: str = Argument(..., help="Name of the model to run"),
-    config_name: str = Argument(
-        ...,
-        callback=lambda val: validate_config_name(val, "run"),
-        help="Name of the configuration to use",
+def explain(
+    config_name: Optional[str] = Option(
+        None, "--config", "-c", help="Name of the configuration file to use"
+    ),
+    model_name: Optional[str] = Option(None, "--model", "-m", help="Name of the model to explain"),
+    method: Optional[str] = Option(
+        None, "--method", help="Explanation method to use (shap or lime)"
+    ),
+    input_data: Optional[str] = Option(None, "--input", "-i", help="Path to input data"),
+    threshold: Optional[float] = Option(None, "--threshold", "-t", help="Prediction threshold"),
+    num_samples: Optional[int] = Option(
+        None, "--samples", "-n", help="Number of samples to explain"
     ),
 ) -> None:
-    initialize(Path(f"config/{config_name}.yaml"))
-    logger = LoggingManager().get_logger("Running")
+    # Initialize with config file if provided
+    config_path = Path(f"config/{config_name}.yaml") if config_name else None
+    initialize(config_path, "explain")
 
-    console.rule("[bold blue]Run Command")
-    logger.info(f"Running model: {model_name} with config: {config_name}")
+    # Get base configuration
+    config = ConfigManager().get_command_config("explain") if config_name else {}
 
-    # Add your running logic here
-    logger.info("Run completed successfully.")
+    # Override with command line arguments
+    if model_name:
+        config["model_name"] = model_name
+    if method:
+        config["method"] = method
+    if input_data:
+        config["input_data"] = input_data
+    if threshold:
+        config["threshold"] = threshold
+    if num_samples:
+        config["num_samples"] = num_samples
+
+    # Validate required parameters
+    if not config.get("method"):
+        raise ValueError(
+            "Explanation method must be specified in config file \
+                         or via --method parameter"
+        )
+    if not config.get("model_name"):
+        raise ValueError("Model name must be specified in config file or via --model parameter")
+
+    logger = LoggingManager().get_logger("Explanation")
+    console.rule("[bold blue]Explain Command")
+    logger.info(
+        f"Explaining model: {config['model_name']} using method: {config['method']} \
+        with config: {config_name if config_name else 'inline parameters'}"
+    )
+
+    # Construct model path using the model name
+    model_path = Path(f"models/{config['model_name']}_xgb.json")
+    if not model_path.exists():
+        logger.error(f"Model not found at {model_path}")
+        raise FileNotFoundError(f"Model not found: {model_path}")
+
+    # Load the dataset
+    download_path = dataset_download(ConfigManager().config["kagglehub_dataset"])
+    csv_path = Path(download_path) / ConfigManager().config["dataset_filename"]
+    df = pd.read_csv(csv_path)
+
+    try:
+        # Get the appropriate explanation method and generate explanations
+        explanation_method = get_explanation_method(config["method"])
+        results = explanation_method.explain(model_path, df)
+
+        # Log the explanation results
+        logger.info("Explanation results:")
+        if isinstance(results, dict):
+            for key, value in results.items():
+                logger.info(f"{key}: {value}")
+        else:
+            logger.info(str(results))
+
+        logger.info(f"Explanation completed successfully using {config['method']} method")
+    except Exception as e:
+        logger.error(f"Error during explanation: {e!s}")
+        raise
 
 
 @app.command()
 def analyze(
-    config_name: str = Argument(
-        ..., callback=lambda val: validate_config_name(val, "train"),
-        help="Name of the configuration to use for analysis",
-    )
+    config_name: Optional[str] = Option(
+        None, "--config", "-c", help="Name of the configuration file to use"
+    ),
+    dataset_path: Optional[str] = Option(None, "--dataset", "-d", help="Path to the dataset"),
+    output_dir: Optional[str] = Option(
+        None, "--output-dir", "-o", help="Directory to save analysis results"
+    ),
+    generate_plots: Optional[bool] = Option(
+        None, "--plots", "-p", help="Whether to generate plots"
+    ),
+    save_statistics: Optional[bool] = Option(
+        None, "--stats", "-s", help="Whether to save statistics"
+    ),
 ) -> None:
-    initialize(Path(f"config/{config_name}.yaml"))
+    # Initialize with config file if provided
+    config_path = Path(f"config/{config_name}.yaml") if config_name else None
+    initialize(config_path, "analyze")
+
+    # Get base configuration
+    config = ConfigManager().get_command_config("analyze") if config_name else {}
+
+    # Override with command line arguments
+    if dataset_path:
+        config["dataset_path"] = dataset_path
+    if generate_plots is not None:
+        config["generate_plots"] = generate_plots
+    if save_statistics is not None:
+        config["save_statistics"] = save_statistics
 
     logger = LoggingManager().get_logger("Analysis")
     console.rule("[bold magenta]Analysis Command")
-    logger.info(f"Running data analysis with config: {config_name}")
+    logger.info(
+        f"Running data analysis with config: {config_name if config_name else 'inline parameters'}"
+    )
 
-    spark = SparkSession.builder.appName("DataAnalysis") \
-        .getOrCreate()
+    # Create Spark session
+    spark = create_spark_session(ConfigManager().config)
 
-    download_path = dataset_download("nelgiriyewithana/credit-card-fraud-detection-dataset-2023")
-    csv_path = Path(download_path) / "creditcard_2023.csv"
+    # Load dataset
+    download_path = dataset_download(ConfigManager().config["kagglehub_dataset"])
+    csv_path = Path(download_path) / ConfigManager().config["dataset_filename"]
 
     df = spark.read.csv(str(csv_path), header=True, inferSchema=True)
-    analysis.analyze(df)
+    analysis.analyze(df, config)
 
     logger.info("Analysis completed successfully.")
+
 
 if __name__ == "__main__":
     app()

@@ -14,15 +14,33 @@ def dummy_config(tmp_path: Path) -> tuple[Path, Path]:
     config_dir.mkdir()
     schema_dir.mkdir()
 
-    schema_path = schema_dir / "train.json"
-    schema = {
+    # Create global schema
+    global_schema_path = schema_dir / "global.json"
+    global_schema = {
+        "type": "object",
+        "properties": {
+            "train": {
+                "type": "object",
+                "properties": {"learning_rate": {"type": "number"}},
+                "required": ["learning_rate"],
+            }
+        },
+    }
+    global_schema_path.write_text(json.dumps(global_schema))
+
+    # Create train schema
+    train_schema_path = schema_dir / "train.json"
+    train_schema = {
         "type": "object",
         "properties": {"learning_rate": {"type": "number"}},
         "required": ["learning_rate"],
     }
-    schema_path.write_text(json.dumps(schema))
+    train_schema_path.write_text(json.dumps(train_schema))
 
-    config_path = config_dir / "valid.yaml"
+    # Create train config
+    train_config_dir = config_dir / "train"
+    train_config_dir.mkdir()
+    config_path = train_config_dir / "valid.yaml"
     config = {"learning_rate": 0.01}
     config_path.write_text(yaml.dump(config))
 

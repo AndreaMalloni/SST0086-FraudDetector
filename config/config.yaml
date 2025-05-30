@@ -1,0 +1,63 @@
+# Global configuration for the Fraud Detector project
+logging: true
+kagglehub_dataset: "nelgiriyewithana/credit-card-fraud-detection-dataset-2023"
+dataset_filename: "creditcard_2023.csv"
+
+# Spark configuration
+spark:
+  app_name: "CreditCardFraudDetector"
+  master: "local[1]"
+  executor_memory: "8g"
+  driver_memory: "8g"
+  offheap_enabled: true
+  offheap_size: "4g"
+  shuffle_partitions: 100
+  auto_broadcast_threshold: "-1"
+
+# Training configuration
+train:
+  model_name: test
+  shuffle: true
+  validation_split: 0.2
+  early_stopping:
+    enabled: true
+    patience: 5
+  #tuning:
+    #max_depth: [4, 6, 8]
+    #learning_rate: [0.05, 0.1, 0.2]
+    #n_estimators: [50, 100]
+    #subsample: [0.8, 1.0]
+    #colsample_bytree: [0.8, 1.0]
+    #min_child_weight: [1, 5]
+    #gamma: [0, 1]
+    #reg_alpha: [0, 0.1]
+    #reg_lambda: [1, 2]
+  data_processing:
+    clean_data: true
+    repartition: 1
+    cache_data: true
+
+# Explanation configuration
+explain:
+  model_name: test_shap
+  threshold: 0.8
+  output_predictions: results/predictions.csv
+  log_results: true
+  method: shap  # or lime
+  num_samples: 100
+  explanation_params:
+    shap:
+      max_display: 20
+      plot_type: bar
+    lime:
+      num_features: 10
+      class_names: ["Not Fraud", "Fraud"]
+
+# Analysis configuration
+analyze:
+  generate_plots: true
+  save_statistics: true
+  analysis_params:
+    correlation_threshold: 0.5
+    plot_types: ["correlation", "distribution", "box"]
+    statistics: ["basic", "correlation", "missing", "outliers"] 
