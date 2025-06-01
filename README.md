@@ -68,14 +68,7 @@ To rigorously evaluate the explanations quantitatively, the following approaches
         * **Cosine Similarity:** To compare the vectors of SHAP values/LIME weights for original and perturbed instances, assessing stability in magnitude and direction of contributions.
     * **Consideration:** Clearly define "small changes" (e.g., adding Gaussian noise, slight feature modifications).
 
-3.  **Explanation Complexity / Sparsity:**
-    * **Objective:** Measure how concise and focused an explanation is. Simpler explanations are generally more interpretable.
-    * **Metrics:**
-        * **Number of Relevant Features:** Count features whose absolute SHAP value exceeds a defined threshold (e.g., absolute value or percentage of max SHAP value).
-        * **Contribution Percentage:** Calculate the percentage of total absolute SHAP values accounted for by the top N features.
-    * **Consideration:** Define a suitable threshold for "relevant features."
-
-4.  **Discriminative Power of Explanations:**
+3.  **Discriminative Power of Explanations:**
     * **Objective:** Assess whether the explanations themselves capture sufficient information to distinguish between fraud and non-fraud.
     * **Approach:** Use SHAP values (or LIME weights) as features to train a new, simple model (e.g., Logistic Regression or a shallow Decision Tree) to classify transactions.
     * **Metrics:** Evaluate the performance of this simple model using accuracy, F1-score, and AUC (especially AUC-PR for imbalanced data).
