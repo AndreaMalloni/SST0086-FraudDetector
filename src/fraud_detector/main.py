@@ -29,7 +29,7 @@ def initialize(config_path: Optional[Path] = None, command: Optional[str] = None
     log_dir = Path(f"logs/[{timestamp}]")
 
     # Create necessary directories
-    for folder in ["models", log_dir]:
+    for folder in [Path("models"), log_dir]:
         if not Path(folder).exists():
             folder.mkdir(parents=True)
 
@@ -161,9 +161,13 @@ def train(
 
     # Save in XGBoost format for SHAP
     xgb_model = model.stages[-1].get_booster()
+    # Get feature names from the assembler
+    feature_names = model.stages[0].getInputCols()
+    xgb_model.feature_names = feature_names
     xgb_model_path = spark_model_path / f"{config['model_name']}.json"
     xgb_model.save_model(str(xgb_model_path))
     logger.info(f"Modello salvato in formato XGBoost per SHAP in: {xgb_model_path}")
+    logger.info(f"Feature names salvati nel modello: {feature_names}")
 
     logger.info("Training completed successfully.")
 
@@ -219,7 +223,7 @@ def explain(
     )
 
     # Construct model path using the model name
-    model_path = Path(f"models/{config['model_name']}_xgb.json")
+    model_path = Path(f"models/{config['model_name']}/{config['model_name']}.json")
     if not model_path.exists():
         logger.error(f"Model not found at {model_path}")
         raise FileNotFoundError(f"Model not found: {model_path}")

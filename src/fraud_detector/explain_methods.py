@@ -12,9 +12,10 @@ import shap
 import xgboost as xgb
 
 from fraud_detector.core.logger import LoggingManager
+from fraud_detector.evaluation.discriminative_power import DiscriminativePowerAnalyzer
 from fraud_detector.evaluation.fidelity import FidelityAnalyzer
 from fraud_detector.evaluation.stability import StabilityAnalyzer
-from fraud_detector.evaluation.discriminative_power import DiscriminativePowerAnalyzer
+
 
 class ExplanationMethod(ABC):
     """Abstract base class for explanation methods."""
@@ -55,7 +56,7 @@ class SHAPExplanation(ExplanationMethod):
         plt.tight_layout()
 
         # Get the current log directory
-        log_dirs = sorted(Path("logs").glob("[*]"))
+        log_dirs = sorted(Path("logs").glob("*"))
         if not log_dirs:
             raise RuntimeError(
                 "No log directory found. Make sure the application is properly initialized."
@@ -87,33 +88,30 @@ class SHAPExplanation(ExplanationMethod):
         fidelity_analyzer = FidelityAnalyzer(model_path, data)
         fidelity_results = fidelity_analyzer.analyze_fidelity(
             data[:100],  # Analyze first 100 instances
-            {
-                'feature_names': x.columns.tolist(),
-                'shap_values': shap_values
-            },
-            'shap'
+            {"feature_names": x.columns.tolist(), "shap_values": shap_values},
+            "shap",
         )
 
         # Stability analysis
         stability_analyzer = StabilityAnalyzer(model_path, data)
         stability_results = stability_analyzer.analyze_stability(
             data[:100],  # Analyze first 100 instances
-            {
-                'feature_names': x.columns.tolist(),
-                'shap_values': shap_values
-            },
-            'shap'
+            {"feature_names": x.columns.tolist(), "shap_values": shap_values},
+            "shap",
         )
 
         # Discriminative power analysis
         discriminative_analyzer = DiscriminativePowerAnalyzer()
+
+        # Get balanced sample of instances for discriminative power analysis
+        fraud_samples = data[data["Class"] == 1].sample(n=50, random_state=42)
+        non_fraud_samples = data[data["Class"] == 0].sample(n=50, random_state=42)
+        balanced_samples = pd.concat([fraud_samples, non_fraud_samples])
+
         discriminative_results = discriminative_analyzer.analyze_discriminative_power(
-            {
-                'feature_names': x.columns.tolist(),
-                'shap_values': shap_values
-            },
-            data[:100]['Class'],  # Use the same 100 instances
-            'shap'
+            {"feature_names": x.columns.tolist(), "shap_values": shap_values},
+            balanced_samples["Class"],  # Use balanced samples
+            "shap",
         )
 
         logger.info("\nFidelity Analysis Results:")
@@ -121,16 +119,22 @@ class SHAPExplanation(ExplanationMethod):
         logger.info(f"Mean Correlation: {np.mean(fidelity_results['correlations']):.4f}")
 
         logger.info("\nStability Analysis Results:")
-        logger.info(f"Mean Cosine Similarity: {np.mean(stability_results['cosine_similarities']):.4f}")
+        logger.info(
+            f"Mean Cosine Similarity: \
+                    {np.mean(stability_results['cosine_similarities']):.4f}"
+        )
         for k in [5, 10, 20]:
-            logger.info(f"Mean Jaccard Index (k={k}): {np.mean(stability_results['jaccard_indices'][k]):.4f}")
+            logger.info(
+                f"Mean Jaccard Index (k={k}): \
+                        {np.mean(stability_results['jaccard_indices'][k]):.4f}"
+            )
 
         logger.info("\nDiscriminative Power Analysis Results:")
         logger.info("Logistic Regression Metrics:")
-        for metric, value in discriminative_results['logistic_regression']['metrics'].items():
+        for metric, value in discriminative_results["logistic_regression"]["metrics"].items():
             logger.info(f"{metric}: {value:.4f}")
         logger.info("\nDecision Tree Metrics:")
-        for metric, value in discriminative_results['decision_tree']['metrics'].items():
+        for metric, value in discriminative_results["decision_tree"]["metrics"].items():
             logger.info(f"{metric}: {value:.4f}")
 
         return {
@@ -139,21 +143,21 @@ class SHAPExplanation(ExplanationMethod):
             "feature_names": x.columns.tolist(),
             "plot_path": str(plot_path),
             "fidelity_analysis": {
-                "mean_aufc": float(np.mean(fidelity_results['aufc_scores'])),
-                "mean_correlation": float(np.mean(fidelity_results['correlations'])),
-                "aufc_scores": fidelity_results['aufc_scores'],
-                "correlations": fidelity_results['correlations']
+                "mean_aufc": float(np.mean(fidelity_results["aufc_scores"])),
+                "mean_correlation": float(np.mean(fidelity_results["correlations"])),
+                "aufc_scores": fidelity_results["aufc_scores"],
+                "correlations": fidelity_results["correlations"],
             },
             "stability_analysis": {
-                "mean_cosine_similarity": float(np.mean(stability_results['cosine_similarities'])),
+                "mean_cosine_similarity": float(np.mean(stability_results["cosine_similarities"])),
                 "mean_jaccard_indices": {
-                    str(k): float(np.mean(stability_results['jaccard_indices'][k]))
+                    str(k): float(np.mean(stability_results["jaccard_indices"][k]))
                     for k in [5, 10, 20]
                 },
-                "cosine_similarities": stability_results['cosine_similarities'],
-                "jaccard_indices": stability_results['jaccard_indices']
+                "cosine_similarities": stability_results["cosine_similarities"],
+                "jaccard_indices": stability_results["jaccard_indices"],
             },
-            "discriminative_power_analysis": discriminative_results
+            "discriminative_power_analysis": discriminative_results,
         }
 
 
@@ -252,31 +256,24 @@ class LIMEExplanation(ExplanationMethod):
         fidelity_analyzer = FidelityAnalyzer(model_path, data)
         fidelity_results = fidelity_analyzer.analyze_fidelity(
             data[:5],  # Analyze the same 5 instances we explained
-            {
-                'explanations': explanations
-            },
-            'lime'
+            {"explanations": explanations},
+            "lime",
         )
 
         # Stability analysis
         stability_analyzer = StabilityAnalyzer(model_path, data)
         stability_results = stability_analyzer.analyze_stability(
             data[:5],  # Analyze the same 5 instances we explained
-            {
-                'explanations': explanations
-            },
-            'lime'
+            {"explanations": explanations},
+            "lime",
         )
 
         # Discriminative power analysis
         discriminative_analyzer = DiscriminativePowerAnalyzer()
         discriminative_results = discriminative_analyzer.analyze_discriminative_power(
-            {
-                'explanations': explanations,
-                'feature_names': x.columns.tolist()
-            },
-            data[:5]['Class'],  # Use the same 5 instances
-            'lime'
+            {"explanations": explanations, "feature_names": x.columns.tolist()},
+            data[:5]["Class"],  # Use the same 5 instances
+            "lime",
         )
 
         logger.info("\nFidelity Analysis Results:")
@@ -284,16 +281,22 @@ class LIMEExplanation(ExplanationMethod):
         logger.info(f"Mean Correlation: {np.mean(fidelity_results['correlations']):.4f}")
 
         logger.info("\nStability Analysis Results:")
-        logger.info(f"Mean Cosine Similarity: {np.mean(stability_results['cosine_similarities']):.4f}")
+        logger.info(
+            f"Mean Cosine Similarity: \
+                    {np.mean(stability_results['cosine_similarities']):.4f}"
+        )
         for k in [5, 10, 20]:
-            logger.info(f"Mean Jaccard Index (k={k}): {np.mean(stability_results['jaccard_indices'][k]):.4f}")
+            logger.info(
+                f"Mean Jaccard Index (k={k}): \
+                        {np.mean(stability_results['jaccard_indices'][k]):.4f}"
+            )
 
         logger.info("\nDiscriminative Power Analysis Results:")
         logger.info("Logistic Regression Metrics:")
-        for metric, value in discriminative_results['logistic_regression']['metrics'].items():
+        for metric, value in discriminative_results["logistic_regression"]["metrics"].items():
             logger.info(f"{metric}: {value:.4f}")
         logger.info("\nDecision Tree Metrics:")
-        for metric, value in discriminative_results['decision_tree']['metrics'].items():
+        for metric, value in discriminative_results["decision_tree"]["metrics"].items():
             logger.info(f"{metric}: {value:.4f}")
 
         return {
@@ -301,21 +304,21 @@ class LIMEExplanation(ExplanationMethod):
             "explanations": explanations,
             "feature_names": x.columns.tolist(),
             "fidelity_analysis": {
-                "mean_aufc": float(np.mean(fidelity_results['aufc_scores'])),
-                "mean_correlation": float(np.mean(fidelity_results['correlations'])),
-                "aufc_scores": fidelity_results['aufc_scores'],
-                "correlations": fidelity_results['correlations']
+                "mean_aufc": float(np.mean(fidelity_results["aufc_scores"])),
+                "mean_correlation": float(np.mean(fidelity_results["correlations"])),
+                "aufc_scores": fidelity_results["aufc_scores"],
+                "correlations": fidelity_results["correlations"],
             },
             "stability_analysis": {
-                "mean_cosine_similarity": float(np.mean(stability_results['cosine_similarities'])),
+                "mean_cosine_similarity": float(np.mean(stability_results["cosine_similarities"])),
                 "mean_jaccard_indices": {
-                    str(k): float(np.mean(stability_results['jaccard_indices'][k]))
+                    str(k): float(np.mean(stability_results["jaccard_indices"][k]))
                     for k in [5, 10, 20]
                 },
-                "cosine_similarities": stability_results['cosine_similarities'],
-                "jaccard_indices": stability_results['jaccard_indices']
+                "cosine_similarities": stability_results["cosine_similarities"],
+                "jaccard_indices": stability_results["jaccard_indices"],
             },
-            "discriminative_power_analysis": discriminative_results
+            "discriminative_power_analysis": discriminative_results,
         }
 
 

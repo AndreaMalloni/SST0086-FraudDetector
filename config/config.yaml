@@ -39,7 +39,7 @@ train:
 
 # Explanation configuration
 explain:
-  model_name: test_shap
+  model_name: test
   threshold: 0.8
   output_predictions: results/predictions.csv
   log_results: true
