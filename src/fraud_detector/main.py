@@ -97,6 +97,10 @@ def create_spark_session(config: dict) -> SparkSession:
         builder = builder.config(
             "spark.sql.autoBroadcastJoinThreshold", spark_config["auto_broadcast_threshold"]
         )
+    if "driver_bind_address" in spark_config:
+        builder = builder.config("spark.driver.bindAddress", spark_config["driver_bind_address"])
+    if "driver_host" in spark_config:
+        builder = builder.config("spark.driver.host", spark_config["driver_host"])
 
     return builder.getOrCreate()
 

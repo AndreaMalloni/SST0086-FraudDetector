@@ -13,6 +13,8 @@ spark:
   offheap_size: "4g"
   shuffle_partitions: 100
   auto_broadcast_threshold: "-1"
+  driver_bind_address: "127.0.0.1"
+  driver_host: "127.0.0.1"
 
 # Training configuration
 train:
