@@ -79,18 +79,28 @@ These quantitative evaluation methods, applied to both SHAP and LIME, will provi
 
 ## References
 
-1. I. P. Ojo and A. Tomy, "Explainable AI for credit card fraud detection: Bridging the gap between accuracy and interpretability," *World Journal of Advanced Research and Reviews*, vol. 25, no. 2, pp. 1246–1256, 2023.
+1. European Central Bank, “Seventh report on card fraud,” *European Central Bank*, Oct. 2021. [Online]. Available: [https://www.ecb.europa.eu/press/cardfraud/html/ecb.cardfraudreport202110~cac4c418e8.en.html](https://www.ecb.europa.eu/press/cardfraud/html/ecb.cardfraudreport202110~cac4c418e8.en.html)
 
-2. N. Faruk, A. Tariq, S. Oladele, and M. Gok, "Explainable AI (XAI) for fraud detection: Building trust and transparency in AI-driven financial security systems," *Preprint*, ResearchGate, 2023. Available: [https://www.researchgate.net/publication/390235753](https://www.researchgate.net/publication/390235753)
+2. I. P. Ojo and A. Tomy, “Explainable AI for credit card fraud detection: Bridging the gap between accuracy and interpretability,” *World Journal of Advanced Research and Reviews*, vol. 25, no. 2, pp. 1246–1256, 2023.
 
-3. S. K. Aljunaid, S. J. Almheiri, H. Dawood, and M. A. Khan, "Secure and transparent banking: Explainable AI-driven federated learning model for financial fraud detection," *Journal of Risk and Financial Management*, vol. 18, no. 4, p. 179, 2023.
+3. N. Faruk, A. Tariq, S. Oladele, and M. Gok, “Explainable AI (XAI) for fraud detection: Building trust and transparency in AI-driven financial security systems,” *Preprint*, ResearchGate, 2023. Available: [https://www.researchgate.net/publication/390235753](https://www.researchgate.net/publication/390235753)
 
-4. B. van Veen, "A user-centered explainable artificial intelligence approach for financial fraud detection," *Finance Research Letters*, vol. 58, Part A, 104309, 2024.
+4. P. Sundaravadivel, R. A. Isaac, D. Elangovan, D. KrishnaRaj, V. V. L. Rahul, and R. Raja, “Optimizing credit card fraud detection with random forests and SMOTE,” *Scientific Reports*, vol. 15, Article number: 17851, 2025.
 
-5. M. T. Ribeiro, S. Singh, and C. Guestrin, "Why should I trust you?: Explaining the predictions of any classifier," in *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD)*, pp. 1135–1144, 2016.
+5. S. K. Aljunaid, S. J. Almheiri, H. Dawood, and M. A. Khan, “Secure and transparent banking: Explainable AI-driven federated learning model for financial fraud detection,” *Journal of Risk and Financial Management*, vol. 18, no. 4, p. 179, 2023.
 
-6. S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in *Advances in Neural Information Processing Systems (NeurIPS)*, vol. 30, pp. 4765–4774, 2017.
+6. B. van Veen, “A user-centered explainable artificial intelligence approach for financial fraud detection,” *Finance Research Letters*, vol. 58, Part A, 104309, 2024.
 
-7. T. Miller, "Explanation in artificial intelligence: Insights from the social sciences," *Artificial Intelligence*, vol. 267, pp. 1–38, 2019.
+7. M. T. Ribeiro, S. Singh, and C. Guestrin, “Why should I trust you?: Explaining the predictions of any classifier,” in *Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining (KDD)*, pp. 1135–1144, 2016.
 
-8. R. Nelgiriyewithana, "Credit Card Fraud Detection Dataset (2023)," *Kaggle*, 2023. Available: [https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023](https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023)
+8. S. M. Lundberg and S.-I. Lee, “A unified approach to interpreting model predictions,” in *Advances in Neural Information Processing Systems (NeurIPS)*, vol. 30, pp. 4765–4774, 2017.
+
+9. R. Nelgiriyewithana, “Credit Card Fraud Detection Dataset (2023),” *Kaggle*, 2023. [Online]. Available: [https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023](https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023)
+
+10. F. Almalki and M. Masud, “Financial Fraud Detection Using Explainable AI and Stacking Ensemble Method,” *arXiv preprint arXiv:2505.10050*, 2025.
+
+11. A. Salih, “A Perspective on Explainable Artificial Intelligence Methods: SHAP and LIME,” *arXiv preprint arXiv:2305.02012*, 2023.
+
+12. S. Suriya and R. Sireesha, “Credit Card Fraud Detection using Explainable AI Methods,” *Journal of Innovative Science, Engineering and Management*, vol. 6, no. 1, pp. 26–32, 2024.
+
+13. T. Miller, “Explanation in artificial intelligence: Insights from the social sciences,” *Artificial Intelligence*, vol. 267, pp. 1–38, 2019.
