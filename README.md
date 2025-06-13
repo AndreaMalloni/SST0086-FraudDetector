@@ -1,4 +1,4 @@
-# Opening the Black Box: AI Explainability in Banking Fraud Detection with SHAP
+# Quantitative Assessment of SHAP Explanations in Interpreting Banking Fraud Detection Models
 
 ## 1. Project Overview
 
